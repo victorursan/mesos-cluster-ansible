@@ -1,0 +1,12 @@
+---
+# Variables here are applicable to all host groups
+
+mesos_version: 0.28
+mesos_cluster_name: "MyCluster"
+mesos_quorum_count: "2" 
+ansible_ssh_user: vagrant
+ansible_ssh_pass: vagrant
+zookeeper_client_port: "2181"
+zookeeper_leader_port: "2888"
+zookeeper_election_port: "3888"
+zookeeper_url: "zk://{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',') }}:{{ zookeeper_client_port }}/mesos"

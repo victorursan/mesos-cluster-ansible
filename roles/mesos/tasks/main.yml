@@ -1,0 +1,136 @@
+---
+# tasks file for mesos
+
+# Common tasks for all Mesos nodes
+- name: Add key for Mesosphere repository
+  apt_key: url=http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0xE56151BF state=present
+  sudo: yes
+
+- name: Determine Linux distribution distributor
+  shell: lsb_release -is | tr '[:upper:]' '[:lower:]'
+  register: release_distributor
+
+- name: Determine Linux distribution codename
+  command: lsb_release -cs
+  register: release_codename
+
+- name: Add Mesosphere repository to sources list
+  copy:
+    content: "deb http://repos.mesosphere.io/{{release_distributor.stdout}} {{release_codename.stdout}} main"
+    dest: /etc/apt/sources.list.d/mesosphere.list
+    mode: 0644
+  sudo: yes
+
+# Tasks for Master, Slave, and ZooKeeper nodes
+- name: Install mesos package
+  apt: name=mesos state=present update_cache=true
+  sudo: yes
+  when: mesos_install_mode == "master" or mesos_install_mode == "slave"
+
+- name: Set ZooKeeper URL # used for leader election amongst masters
+  copy:
+    content: "{{zookeeper_url}}"
+    dest: /etc/mesos/zk
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master" or mesos_install_mode == "slave"
+
+# Tasks for Master nodes
+- name: Disable the Mesos Slave service
+  copy:
+    content: "manual"
+    dest: /etc/init/mesos-slave.override
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+- name: Set Mesos Master hostname
+  copy:
+    content: "{{ ansible_host }}"
+    dest: /etc/mesos-master/hostname
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+- name: Set Mesos Master ip
+  copy:
+    content: "{{ ansible_host }}"
+    dest: /etc/mesos-master/ip
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+- name: Set Mesos Master Cluster name
+  copy:
+    content: "{{mesos_cluster_name}}"
+    dest: /etc/mesos-master/cluster
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+- name: Set Mesos Master quorum count
+  copy:
+    content: "{{mesos_quorum_count}}"
+    dest: /etc/mesos-master/quorum
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+# Tasks for Slave nodes
+- name: Disable the Mesos Master service
+  copy:
+    content: "manual"
+    dest: /etc/init/mesos-master.override
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "slave"
+
+- name: Disable the ZooKeeper service
+  copy:
+    content: "manual"
+    dest: /etc/init/zookeeper.override
+    mode: 0644
+  sudo: yes
+  notify:
+    - Stop zookeeper
+  when: mesos_install_mode == "slave"
+
+- name: Set Mesos Slave hostname
+  copy:
+    content: "{{ ansible_host }}"
+    dest: /etc/mesos-slave/hostname
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "slave"
+
+- name: Set Mesos Slave ip
+  copy:
+    content: "{{ ansible_host }} "
+    dest: /etc/mesos-slave/ip
+    mode: 0644
+  sudo: yes
+  when: mesos_install_mode == "slave"
+
+- name: Set Mesos Slave isolation
+  copy:
+    content: "cgroups/cpu,cgroups/mem"
+    dest: /etc/mesos-slave/isolation
+    mode: 0644
+  sudo: yes
+  notify:
+    - Start mesos-slave
+  when: mesos_install_mode == "slave"
+
+# Tasks for ZooKeeper nodes only
+- name: Create zookeeper config file
+  template: src=zoo.cfg.j2 dest=/etc/zookeeper/conf/zoo.cfg
+  sudo: yes
+  when: mesos_install_mode == "master"
+
+- name: Create zookeeper myid file
+  template: src=zoo_id.j2 dest=/etc/zookeeper/conf/myid
+  sudo: yes
+  notify:
+    - Restart zookeeper
+    - Start mesos-master
+  when: mesos_install_mode == "master"

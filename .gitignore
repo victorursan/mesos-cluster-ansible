@@ -1,0 +1,6 @@
+.DS_Store
+*.retry
+.vagrant
+.git
+.idea/
+target/
