@@ -4,7 +4,7 @@
 # Common tasks for all Mesos nodes
 - name: Add key for Mesosphere repository
   apt_key: url=http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0xE56151BF state=present
-  sudo: yes
+  become: yes
 
 - name: Determine Linux distribution distributor
   shell: lsb_release -is | tr '[:upper:]' '[:lower:]'
@@ -19,12 +19,37 @@
     content: "deb http://repos.mesosphere.io/{{release_distributor.stdout}} {{release_codename.stdout}} main"
     dest: /etc/apt/sources.list.d/mesosphere.list
     mode: 0644
-  sudo: yes
+  become: yes
+
+- name: Install add-apt-repostory
+  become: yes
+  apt: name=software-properties-common state=latest
+  when: mesos_install_mode == "master"
+
+- name: Add Oracle Java Repository
+  become: yes
+  apt_repository: repo='ppa:webupd8team/java'
+  when: mesos_install_mode == "master"
+
+- name: Accept Java 8 License
+  become: yes
+  debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+  when: mesos_install_mode == "master"
+
+- name: Install Oracle Java 8
+  become: yes
+  apt: name={{item}} state=latest
+  with_items:
+    - oracle-java8-installer
+    - ca-certificates
+    - oracle-java8-set-default
+  when: mesos_install_mode == "master"
+# sudo add-apt-repository ppa:webupd8team/java
 
 # Tasks for Master, Slave, and ZooKeeper nodes
 - name: Install mesos package
   apt: name=mesos state=present update_cache=true
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master" or mesos_install_mode == "slave"
 
 - name: Set ZooKeeper URL # used for leader election amongst masters
@@ -32,7 +57,7 @@
     content: "{{zookeeper_url}}"
     dest: /etc/mesos/zk
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master" or mesos_install_mode == "slave"
 
 # Tasks for Master nodes
@@ -41,7 +66,7 @@
     content: "manual"
     dest: /etc/init/mesos-slave.override
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 - name: Set Mesos Master hostname
@@ -49,7 +74,7 @@
     content: "{{ ansible_host }}"
     dest: /etc/mesos-master/hostname
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 - name: Set Mesos Master ip
@@ -57,7 +82,7 @@
     content: "{{ ansible_host }}"
     dest: /etc/mesos-master/ip
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 - name: Set Mesos Master Cluster name
@@ -65,7 +90,7 @@
     content: "{{mesos_cluster_name}}"
     dest: /etc/mesos-master/cluster
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 - name: Set Mesos Master quorum count
@@ -73,7 +98,7 @@
     content: "{{mesos_quorum_count}}"
     dest: /etc/mesos-master/quorum
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 # Tasks for Slave nodes
@@ -82,7 +107,7 @@
     content: "manual"
     dest: /etc/init/mesos-master.override
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "slave"
 
 - name: Disable the ZooKeeper service
@@ -90,7 +115,7 @@
     content: "manual"
     dest: /etc/init/zookeeper.override
     mode: 0644
-  sudo: yes
+  become: yes
   notify:
     - Stop zookeeper
   when: mesos_install_mode == "slave"
@@ -100,7 +125,7 @@
     content: "{{ ansible_host }}"
     dest: /etc/mesos-slave/hostname
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "slave"
 
 - name: Set Mesos Slave ip
@@ -108,7 +133,7 @@
     content: "{{ ansible_host }} "
     dest: /etc/mesos-slave/ip
     mode: 0644
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "slave"
 
 - name: Set Mesos Slave isolation
@@ -116,7 +141,7 @@
     content: "cgroups/cpu,cgroups/mem"
     dest: /etc/mesos-slave/isolation
     mode: 0644
-  sudo: yes
+  become: yes
   notify:
     - Start mesos-slave
   when: mesos_install_mode == "slave"
@@ -124,12 +149,12 @@
 # Tasks for ZooKeeper nodes only
 - name: Create zookeeper config file
   template: src=zoo.cfg.j2 dest=/etc/zookeeper/conf/zoo.cfg
-  sudo: yes
+  become: yes
   when: mesos_install_mode == "master"
 
 - name: Create zookeeper myid file
   template: src=zoo_id.j2 dest=/etc/zookeeper/conf/myid
-  sudo: yes
+  become: yes
   notify:
     - Restart zookeeper
     - Start mesos-master
