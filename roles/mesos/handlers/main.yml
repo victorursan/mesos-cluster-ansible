@@ -2,24 +2,24 @@
 # handlers file for mesos
 - name: Start mesos-master
   shell: start mesos-master
-  sudo: yes
+  become: yes
 
 - name: Stop mesos-master
   shell: stop mesos-master
-  sudo: yes
+  become: yes
 
 - name: Start mesos-slave
   shell: start mesos-slave
-  sudo: yes
+  become: yes
 
 - name: Stop mesos-slave
   shell: stop mesos-slave
-  sudo: yes
+  become: yes
 
 - name: Restart zookeeper
   shell: restart zookeeper
-  sudo: yes
+  become: yes
 
 - name: Stop zookeeper
   shell: stop zookeeper
-  sudo: yes
+  become: yes
