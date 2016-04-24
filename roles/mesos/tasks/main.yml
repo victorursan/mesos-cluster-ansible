@@ -93,7 +93,7 @@
 
 - name: Set Mesos Master Cluster name
   copy:
-    content: "{{mesos_cluster_name}}"
+    content: "{{ mesos_cluster_name }}"
     dest: /etc/mesos-master/cluster
     mode: 0644
   become: yes
@@ -101,7 +101,7 @@
 
 - name: Set Mesos Master quorum count
   copy:
-    content: "{{mesos_quorum_count}}"
+    content: "{{ mesos_quorum_count }}"
     dest: /etc/mesos-master/quorum
     mode: 0644
   become: yes
@@ -138,6 +138,61 @@
   copy:
     content: "{{ ansible_host }} "
     dest: /etc/mesos-slave/ip
+    mode: 0644
+  become: yes
+  when: mesos_install_mode == "slave"
+
+# Setup python
+- name: Install dependencies
+  apt: name={{ item }} update_cache=yes
+  with_items:
+      - python-dev
+      - python-setuptools
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Install pip
+  easy_install:
+      name: pip
+  become: yes
+  when: mesos_install_mode == "slave"
+
+# Setup Docker
+- name: Install docker-py
+  pip:
+      name: docker-py
+      state: present
+      version: 1.8.0
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Add docker apt repo
+  apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Import the Docker repository key
+  shell: apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Install Docker package
+  apt: name=docker-engine update_cache=yes
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Set Mesos Slave containers
+  copy:
+    content: "{{ containerizers }} "
+    dest: /etc/mesos-slave/containerizers
+    mode: 0644
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Set Mesos Slave executor registration timeout
+  copy:
+    content: "{{ executor_registration_timeout }} "
+    dest: /etc/mesos-slave/executor_registration_timeout
     mode: 0644
   become: yes
   when: mesos_install_mode == "slave"
