@@ -60,6 +60,12 @@
   become: yes
   when: mesos_install_mode == "master" or mesos_install_mode == "slave"
 
+
+- name: Set ZK
+  lineinfile: dest=/etc/environment state=present regexp='^ZK' line='ZK={{zookeeper_url}}'
+  become: yes
+  when: mesos_install_mode == "master"
+
 # Tasks for Master nodes
 - name: Disable the Mesos Slave service
   copy:
