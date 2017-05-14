@@ -1,9 +1,9 @@
 ---
 # Variables here are applicable to all host groups
 
-mesos_version: 1.0
+mesos_version: 1.2
 mesos_cluster_name: "MyCluster"
-mesos_quorum_count: "2"
+mesos_quorum_count: "1"
 ansible_ssh_user: vagrant
 ansible_ssh_pass: vagrant
 containerizers: "docker,mesos"
@@ -12,3 +12,5 @@ zookeeper_client_port: "2181"
 zookeeper_leader_port: "2888"
 zookeeper_election_port: "3888"
 zookeeper_url: "zk://{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',') }}:{{ zookeeper_client_port }}/mesos"
+
+consul_main: "10.1.1.11"

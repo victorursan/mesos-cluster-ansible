@@ -26,24 +26,26 @@
   apt: name=software-properties-common state=latest
   when: mesos_install_mode == "master"
 
-- name: Add Oracle Java Repository
-  become: yes
-  apt_repository: repo='ppa:webupd8team/java'
-  when: mesos_install_mode == "master"
 
-- name: Accept Java 8 License
-  become: yes
-  debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
-  when: mesos_install_mode == "master"
-
-- name: Install Oracle Java 8
-  become: yes
-  apt: name={{item}} state=latest
-  with_items:
-    - oracle-java8-installer
-    - ca-certificates
-    - oracle-java8-set-default
-  when: mesos_install_mode == "master"
+# todo: this is not needed
+# - name: Add Oracle Java Repository
+#   become: yes
+#   apt_repository: repo='ppa:webupd8team/java'
+#   when: mesos_install_mode == "master"
+#
+# - name: Accept Java 8 License
+#   become: yes
+#   debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+#   when: mesos_install_mode == "master"
+#
+# - name: Install Oracle Java 8
+#   become: yes
+#   apt: name={{item}} state=latest
+#   with_items:
+#     - oracle-java8-installer
+#     - ca-certificates
+#     - oracle-java8-set-default
+#   when: mesos_install_mode == "master"
 # sudo add-apt-repository ppa:webupd8team/java
 
 # Tasks for Master, Slave, and ZooKeeper nodes
@@ -149,13 +151,13 @@
       - python-dev
       - python-setuptools
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 - name: Install pip
   easy_install:
       name: pip
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 # Setup Docker
 - name: Install docker-py
@@ -164,22 +166,22 @@
       state: present
       version: 1.8.0
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 - name: Add docker apt repo
   apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 - name: Import the Docker repository key
   shell: apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 - name: Install Docker package
   apt: name=docker-engine update_cache=yes
   become: yes
-  when: mesos_install_mode == "slave"
+  when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
 - name: Set Mesos Slave containers
   copy:
@@ -207,6 +209,28 @@
     - Start mesos-slave
   when: mesos_install_mode == "slave"
 
+- name: Set Mesos Slave resources
+  shell: 'echo "[
+    {
+      \"name\": \"cpus\",
+      \"type\": \"SCALAR\",
+      \"scalar\": {
+        \"value\": `nproc`
+      }
+    },
+    {
+      \"name\": \"mem\",
+      \"type\": \"SCALAR\",
+      \"scalar\": {
+        \"value\": `vmstat -s -S ''M'' | awk ''NR==1{print $1}''`
+      }
+    }
+  ]" > /etc/mesos-slave/resources'
+  become: yes
+  notify:
+    - Start mesos-slave
+  when: mesos_install_mode == "slave"
+
 # Tasks for ZooKeeper nodes only
 - name: Create zookeeper config file
   template: src=zoo.cfg.j2 dest=/etc/zookeeper/conf/zoo.cfg
@@ -220,3 +244,59 @@
     - Restart zookeeper
     - Start mesos-master
   when: mesos_install_mode == "master"
+
+- name: Start Consul main server container
+  docker_container:
+    name: "node{{ ansible_host }}"
+    image: consul
+    state: started
+    network_mode: host
+    command: [
+    "agent",
+    "-server",
+    "-client=0.0.0.0",
+    "-node=node{{ ansible_host }}",
+    "-bootstrap-expect=1",
+    "-bind={{ ansible_host }}",
+    "-data-dir=/tmp/consul",
+    "-ui"
+    ]
+  become: yes
+  when: mesos_install_mode == "consul_main_master"
+
+- name: Start Consul server container
+  docker_container:
+    name: "node{{ ansible_host }}"
+    image: consul
+    state: started
+    network_mode: host
+    command: [
+    "agent",
+    "-server",
+    "-client=0.0.0.0",
+    "-node=node{{ ansible_host }}",
+    "-bootstrap-expect=2",
+    "-bind={{ ansible_host }}",
+    "-data-dir=/tmp/consul",
+    "-join={{ consul_main }}",
+    "-ui"
+    ]
+  become: yes
+  when: mesos_install_mode == "consul_master"
+
+- name: Start Consul agent container
+  docker_container:
+    name: "node{{ ansible_host }}"
+    image: consul
+    state: started
+    network_mode: host
+    command: [
+    "agent",
+    "-client={{ ansible_host }}",
+    "-bind={{ ansible_host }}",
+    "-node=node{{ ansible_host }}",
+    "-data-dir=/tmp/consul",
+    "-join={{ consul_main }}"
+    ]
+  become: yes
+  when: mesos_install_mode == "consul_slave"

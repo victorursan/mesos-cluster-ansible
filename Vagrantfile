@@ -3,7 +3,7 @@ Vagrant.configure(2) do |config|
     config.vm.box = "ubuntu/trusty64"
 
     config.vm.provider "virtualbox" do |v|
-      v.memory = 1024
+      v.memory = 2048
       v.cpus = 1
     end
 
@@ -16,15 +16,15 @@ Vagrant.configure(2) do |config|
         master1.vm.hostname = "master1"
     end
 
-    config.vm.define "master2" do |master2|
-        master2.vm.network "private_network", ip: "10.1.1.12"
-        master2.vm.hostname = "master2"
-    end
-
-    config.vm.define "master3" do |master3|
-        master3.vm.network "private_network", ip: "10.1.1.13"
-        master3.vm.hostname = "master3"
-    end
+    # config.vm.define "master2" do |master2|
+    #     master2.vm.network "private_network", ip: "10.1.1.12"
+    #     master2.vm.hostname = "master2"
+    # end
+    #
+    # config.vm.define "master3" do |master3|
+    #     master3.vm.network "private_network", ip: "10.1.1.13"
+    #     master3.vm.hostname = "master3"
+    # end
 
     #slave machines
     config.vm.define "slave1" do |slave1|

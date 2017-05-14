@@ -19,3 +19,30 @@
   become_method: sudo
   roles:
     - { role: mesos, mesos_install_mode: "slave", tags: ["mesos_slaves"] }
+
+- name: deploy consul main master
+  hosts: consul_main_master
+  user: vagrant
+  port: 22
+  become: yes
+  become_method: sudo
+  roles:
+    - { role: mesos, mesos_install_mode: "consul_main_master", tags: ["consul_main_master"] }
+
+- name: deploy consul master
+  hosts: consul_master
+  user: vagrant
+  port: 22
+  become: yes
+  become_method: sudo
+  roles:
+    - { role: mesos, mesos_install_mode: "consul_master", tags: ["consul_master"] }
+
+- name: deploy consul main master
+  hosts: mesos_slaves
+  user: vagrant
+  port: 22
+  become: yes
+  become_method: sudo
+  roles:
+    - { role: mesos, mesos_install_mode: "consul_slave", tags: ["mesos_slaves"] }
