@@ -183,6 +183,52 @@
   become: yes
   when: mesos_install_mode == "slave" or mesos_install_mode == "master"
 
+- name: Set config file for docker (to run on TCP too)
+  copy:
+    content: |
+      # Docker Upstart and SysVinit configuration file
+      #
+      # THIS FILE DOES NOT APPLY TO SYSTEMD
+      #
+      #   Please see the documentation for "systemd drop-ins":
+      #   https://docs.docker.com/engine/admin/systemd/
+      #
+
+      # Customize location of Docker binary (especially for development testing).
+      #DOCKERD="/usr/local/bin/dockerd"
+
+      # Use DOCKER_OPTS to modify the daemon startup options.
+      DOCKER_OPTS="-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock"
+
+      # If you need Docker to use an HTTP proxy, it can also be specified here.
+      #export http_proxy="http://127.0.0.1:3128/"
+
+      # This is also a handy place to tweak where Docker's temporary files go.
+      export DOCKER_TMPDIR="/mnt/bigdrive/docker-tmp"
+    dest: "/etc/default/docker"
+    mode: 0644
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Restart Docker
+  service:
+    name: docker
+    state: restarted
+  become: yes
+  when: mesos_install_mode == "slave"
+
+# - name: Stop Docker deamon on slave
+#   service:
+#       name: docker
+#       state: stopped
+#   become: yes
+#   when: mesos_install_mode == "slave"
+#
+# - name: Start Docker deamon on slave
+#   shell: 'dockerd -D -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --oom-score-adjust -999 &'
+#   become: yes
+#   when: mesos_install_mode == "slave"
+
 - name: Set Mesos Slave containers
   copy:
     content: "{{ containerizers }} "
@@ -205,8 +251,6 @@
     dest: /etc/mesos-slave/isolation
     mode: 0644
   become: yes
-  notify:
-    - Start mesos-slave
   when: mesos_install_mode == "slave"
 
 - name: Set Mesos Slave resources

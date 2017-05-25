@@ -1,7 +1,6 @@
 [mesos_masters]
 10.1.1.11 zoo_id=1
 
-
 [mesos_slaves]
 10.1.10.11
 10.1.10.12

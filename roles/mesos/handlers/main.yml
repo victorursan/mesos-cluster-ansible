@@ -12,6 +12,10 @@
   shell: start mesos-slave
   become: yes
 
+- name: Restart mesos-slave
+  shell: restart mesos-slave
+  become: yes
+
 - name: Stop mesos-slave
   shell: stop mesos-slave
   become: yes
