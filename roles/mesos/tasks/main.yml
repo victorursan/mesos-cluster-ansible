@@ -328,6 +328,90 @@
   become: yes
   when: mesos_install_mode == "consul_master"
 
+- name: Install software-properties-common
+  apt: name=software-properties-common state=present update_cache=true
+  become: yes
+  when: mesos_install_mode == "master"
+
+- name: Add HAProxy repo
+  apt_repository:
+    repo: 'ppa:vbernat/haproxy-1.7'
+    codename: 'trusty'
+  become: yes
+  when: mesos_install_mode == "master"
+
+- name: Install HAProxy
+  apt: name=haproxy state=present update_cache=true
+  become: yes
+  when: mesos_install_mode == "master"
+
+- name: download Consul-template
+  unarchive:
+    src: https://releases.hashicorp.com/consul-template/0.18.5/consul-template_0.18.5_linux_amd64.tgz
+    dest: /etc/
+    remote_src: True
+    mode: 0777
+  become: yes
+  when: mesos_install_mode == "master"
+
+- name: Copy HAProxy cfg file
+  copy:
+    src: /Users/victor/Learning/mesos-cluster-ansible/files/haproxy.cfg
+    dest: /etc/haproxy/haproxy.cfg
+    mode: 0777
+  become: yes
+  when: mesos_install_mode == "master"
+
+
+- name: Copy consul-template template for haproxy file
+  copy:
+    src: /Users/victor/Learning/mesos-cluster-ansible/files/haproxy.conf.ctmpl
+    dest: /etc/haproxy/haproxy.conf.ctmpl
+    mode: 0777
+  become: yes
+  when: mesos_install_mode == "master"
+
+
+- name: Copy HAProxy restart shell
+  copy:
+    src: /Users/victor/Learning/mesos-cluster-ansible/files/restart_haproxy.sh
+    dest: /etc/haproxy/restart_haproxy.sh
+    mode: 0777
+  become: yes
+  when: mesos_install_mode == "master"
+
+- name: Restart HAProxy
+  service:
+    name: haproxy
+    state: restarted
+  become: yes
+  when: mesos_install_mode == "consul_main_master"
+
+- name: start consul-template
+  shell: '/etc/consul-template  -consul-addr "10.1.1.11:8500" -template  "/etc/haproxy/haproxy.conf.ctmpl:/etc/haproxy/haproxy.cfg:bash /etc/haproxy/restart_haproxy.sh" -log-level=debug &'
+  become: yes
+  when: mesos_install_mode == "consul_main_master"
+
+- name: Install dnsmasq
+  become: yes
+  apt: name=dnsmasq state=latest
+  when: mesos_install_mode == "slave"
+
+- name: Set conf for dnsmasq
+  copy:
+    content: "address=/consul/{{ consul_main }}"
+    dest: "/etc/dnsmasq.d/10-consul"
+    mode: 0777
+  become: yes
+  when: mesos_install_mode == "slave"
+
+- name: Restart Dnsmasq
+  service:
+    name: dnsmasq
+    state: restarted
+  become: yes
+  when: mesos_install_mode == "slave"
+
 - name: Start Consul agent container
   docker_container:
     name: "node{{ ansible_host }}"
