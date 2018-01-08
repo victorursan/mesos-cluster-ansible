@@ -1,13 +1,15 @@
 ---
 # This playbook deploys the entire Mesos cluster infrastructure.
 # RUN: ansible-playbook --ask-sudo-pass -i hosts site.yml
-
 - name: deploy and configure the mesos masters
   hosts: mesos_masters
   user: vagrant
   port: 22
   become: yes
-  become_method: sudo
+  gather_facts: False
+  pre_tasks:
+    - raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+    - setup: # aka gather_facts
   roles:
     - { role: mesos, mesos_install_mode: "master", tags: ["mesos_masters"] }
 
@@ -16,7 +18,10 @@
   user: vagrant
   port: 22
   become: yes
-  become_method: sudo
+  gather_facts: False
+  pre_tasks:
+    - raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+    - setup: # aka gather_facts
   roles:
     - { role: mesos, mesos_install_mode: "slave", tags: ["mesos_slaves"] }
 
@@ -25,7 +30,6 @@
   user: vagrant
   port: 22
   become: yes
-  become_method: sudo
   roles:
     - { role: mesos, mesos_install_mode: "consul_main_master", tags: ["consul_main_master"] }
 
@@ -34,7 +38,6 @@
   user: vagrant
   port: 22
   become: yes
-  become_method: sudo
   roles:
     - { role: mesos, mesos_install_mode: "consul_master", tags: ["consul_master"] }
 
@@ -43,6 +46,5 @@
   user: vagrant
   port: 22
   become: yes
-  become_method: sudo
   roles:
     - { role: mesos, mesos_install_mode: "consul_slave", tags: ["mesos_slaves"] }

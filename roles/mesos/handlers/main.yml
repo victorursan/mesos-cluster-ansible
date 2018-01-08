@@ -1,29 +1,29 @@
 ---
 # handlers file for mesos
 - name: Start mesos-master
-  shell: start mesos-master
+  systemd: name=mesos-master state=started daemon_reload=yes
   become: yes
 
 - name: Stop mesos-master
-  shell: stop mesos-master
+  systemd: name=mesos-master state=stopped daemon_reload=yes
   become: yes
 
 - name: Start mesos-slave
-  shell: start mesos-slave
+  systemd: name=mesos-slave state=started daemon_reload=yes
   become: yes
 
 - name: Restart mesos-slave
-  shell: restart mesos-slave
+  systemd: name=mesos-slave state=restarted daemon_reload=yes
   become: yes
 
 - name: Stop mesos-slave
-  shell: stop mesos-slave
+  systemd: name=mesos-slave state=stopped daemon_reload=yes
   become: yes
 
 - name: Restart zookeeper
-  shell: restart zookeeper
+  systemd: name=zookeeper  state=stopped daemon_reload=yes
   become: yes
 
 - name: Stop zookeeper
-  shell: stop zookeeper
+  systemd: name=zookeeper state=stopped daemon_reload=yes
   become: yes
